@@ -74,8 +74,8 @@ jobs:
       
       - name: Validate PPPoE Inputs
         run: |
-          if [[ "${{ inputs.enable_pppoe }}" == "yes" ]]; then
-            if [[ -z "${{ inputs.pppoe_account }}" || -z "${{ inputs.pppoe_password }}" ]]; then
+          if [[ "${{ github.event.inputs.enable_pppoe }}" == "yes" ]]; then
+            if [[ -z "${{ github.event.inputs.pppoe_account }}" || -z "${{ github.event.inputs.pppoe_password }}" ]]; then
               echo "Error: PPPoE account and password must be provided when PPPoE is enabled!"
               exit 1
             fi
@@ -90,27 +90,69 @@ jobs:
             echo "❎ 未启用 luci-app-store"
           fi
 
+      - name: Check imm.config file exists
+        run: |
+          if [ ! -f "${{ github.workspace }}/x86-64/imm.config" ]; then
+            echo "❌ 错误: imm.config 文件不存在于 ${{ github.workspace }}/x86-64/"
+            echo "当前目录内容:"
+            ls -la "${{ github.workspace }}/x86-64/" || true
+            exit 1
+          fi
+          echo "✅ imm.config 文件存在"
+
       - name: Build ImmortalWrt-x86-64-efi 24.10.x
         run: |
           profile="${{ github.event.inputs.profile }}"
           include_docker="${{ github.event.inputs.include_docker }}"
           luci_version="${{ github.event.inputs.luci_version }}"
+          enable_pppoe="${{ github.event.inputs.enable_pppoe }}"
+          pppoe_account="${{ github.event.inputs.pppoe_account }}"
+          pppoe_password="${{ github.event.inputs.pppoe_password }}"
+          
           echo "Building for profile: $profile"
+          echo "LuCI version: $luci_version"
+          echo "Include Docker: $include_docker"
+          echo "Enable PPPoE: $enable_pppoe"
+          
+          # 创建必要的目录
+          mkdir -p "${{ github.workspace }}/bin"
+          
           docker run --rm -i \
             --user root \
             -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
             -v "${{ github.workspace }}/files:/home/build/immortalwrt/files" \
             -v "${{ github.workspace }}/custom:/home/build/immortalwrt/files/etc/config" \
-            -v "${{ github.workspace }}/x86-64/imm.config:/home/build/immortalwrt/.config" \
             -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
             -v "${{ github.workspace }}/x86-64/build24.sh:/home/build/immortalwrt/build.sh" \
-            -e PROFILE=$profile \
-            -e INCLUDE_DOCKER=$include_docker \
-            -e ENABLE_PPPOE=${{ github.event.inputs.enable_pppoe }} \
-            -e PPPOE_ACCOUNT=${{ github.event.inputs.pppoe_account }} \
-            -e PPPOE_PASSWORD=${{ github.event.inputs.pppoe_password }} \
-          immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} /bin/bash /home/build/immortalwrt/build.sh
+            -e PROFILE="$profile" \
+            -e INCLUDE_DOCKER="$include_docker" \
+            -e ENABLE_PPPOE="$enable_pppoe" \
+            -e PPPOE_ACCOUNT="$pppoe_account" \
+            -e PPPOE_PASSWORD="$pppoe_password" \
+            -e LUCI_VERSION="$luci_version" \
+            immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} /bin/bash -c "
+              # 读取配置文件内容并写入正确位置
+              cat > /home/build/immortalwrt/.config << 'EOF'
+                    $(cat ${{ github.workspace }}/x86-64/imm.config)
+                    EOF
+              # 执行构建脚本
+              /home/build/immortalwrt/build.sh
+            "
           
+          echo "✅ Docker 容器运行完成"
+
+      - name: Check build output
+        run: |
+          if [ -d "${{ github.workspace }}/bin/targets/x86/64/" ]; then
+            echo "✅ 编译输出目录存在"
+            find "${{ github.workspace }}/bin/targets/x86/64/" -name "*.img.gz" -o -name "*.img" | while read file; do
+              echo "找到固件文件: $file"
+            done
+          else
+            echo "❌ 编译输出目录不存在"
+            echo "当前目录结构:"
+            find "${{ github.workspace }}/bin" -type f -name "*.img*" 2>/dev/null || echo "未找到固件文件"
+          fi
 
       - name: Create info
         run: |
@@ -126,10 +168,13 @@ jobs:
           EOF
 
           if [ "${{ github.event.inputs.include_docker }}" == "yes" ]; then
-            extra_content="#### 默认带docker"
-            echo -e "\n$extra_content" >> ${{ github.workspace }}/router-info.md
+            echo -e "\n#### 默认带docker" >> ${{ github.workspace }}/router-info.md
           else
             echo -e "\n#### 不带docker" >> ${{ github.workspace }}/router-info.md
+          fi
+          
+          if [ "${{ github.event.inputs.enable_store }}" == "true" ]; then
+            echo -e "#### 已集成软件商店" >> ${{ github.workspace }}/router-info.md
           fi
 
       - name: Upload ImmortWrt as release assets
