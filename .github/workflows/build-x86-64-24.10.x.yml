@@ -94,7 +94,6 @@ jobs:
         run: |
           if [ ! -f "${{ github.workspace }}/x86-64/imm.config" ]; then
             echo "❌ 错误: imm.config 文件不存在于 ${{ github.workspace }}/x86-64/"
-            echo "当前目录内容:"
             ls -la "${{ github.workspace }}/x86-64/" || true
             exit 1
           fi
@@ -117,6 +116,7 @@ jobs:
           # 创建必要的目录
           mkdir -p "${{ github.workspace }}/bin"
           
+          # 使用更简单的方法：将配置文件作为环境变量传递
           docker run --rm -i \
             --user root \
             -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
@@ -131,11 +131,7 @@ jobs:
             -e PPPOE_PASSWORD="$pppoe_password" \
             -e LUCI_VERSION="$luci_version" \
             immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} /bin/bash -c "
-              # 读取配置文件内容并写入正确位置
-              cat > /home/build/immortalwrt/.config << 'EOF'
-                    $(cat ${{ github.workspace }}/x86-64/imm.config)
-                    EOF
-              # 执行构建脚本
+              # 从build24.sh脚本中读取配置，避免直接挂载.config文件
               /home/build/immortalwrt/build.sh
             "
           
@@ -145,9 +141,7 @@ jobs:
         run: |
           if [ -d "${{ github.workspace }}/bin/targets/x86/64/" ]; then
             echo "✅ 编译输出目录存在"
-            find "${{ github.workspace }}/bin/targets/x86/64/" -name "*.img.gz" -o -name "*.img" | while read file; do
-              echo "找到固件文件: $file"
-            done
+            ls -la "${{ github.workspace }}/bin/targets/x86/64/" || true
           else
             echo "❌ 编译输出目录不存在"
             echo "当前目录结构:"
@@ -177,13 +171,36 @@ jobs:
             echo -e "#### 已集成软件商店" >> ${{ github.workspace }}/router-info.md
           fi
 
-      - name: Upload ImmortWrt as release assets
-        uses: softprops/action-gh-release@v2.2.1
-        with:
-          tag_name: Autobuild-x86-64
-          body_path: ${{ github.workspace }}/router-info.md
-          files: |
-            ${{ github.workspace }}/bin/targets/x86/64/*squashfs-combined-efi.img.gz
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release and Upload Assets
+        run: |
+          # 首先检查是否有固件文件
+          FIRMWARE_FILES=$(find "${{ github.workspace }}/bin" -name "*.img.gz" -o -name "*.img" 2>/dev/null || true)
+          
+          if [ -z "$FIRMWARE_FILES" ]; then
+            echo "❌ 未找到固件文件，跳过创建Release"
+            exit 0
+          fi
+          
+          echo "找到固件文件:"
+          echo "$FIRMWARE_FILES"
+          
+          # 创建Release
+          TAG_NAME="Autobuild-x86-64-$(date +%Y%m%d-%H%M%S)"
+          
+          # 使用GitHub CLI创建Release
+          gh release create "$TAG_NAME" \
+            --title "ImmortalWrt x86-64 自动构建 $(date +%Y-%m-%d)" \
+            --notes-file "${{ github.workspace }}/router-info.md" \
+            --target "${{ github.ref }}" \
+            --repo "${{ github.repository }}"
+          
+          # 上传固件文件
+          echo "$FIRMWARE_FILES" | while read -r file; do
+            if [ -f "$file" ]; then
+              echo "上传文件: $file"
+              gh release upload "$TAG_NAME" "$file" \
+                --repo "${{ github.repository }}"
+            fi
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
