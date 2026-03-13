@@ -54,6 +54,7 @@ lan_section=$(uci show network | awk -F '[.=]' '/\.\@?device\[\d+\]\.name=.br-la
 
 # PPPoE WAN 设置
 [ "$enable_pppoe" = "yes" ] && {
+    uci set network.wan=interface
     uci set network.wan.proto='pppoe'
     uci set network.wan.username="$pppoe_account"
     uci set network.wan.password="$pppoe_password"
