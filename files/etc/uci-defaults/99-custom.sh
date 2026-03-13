@@ -40,7 +40,6 @@ fi
 IP_VALUE_FILE="/etc/config/custom_router_ip.txt"
 if [ -f "$IP_VALUE_FILE" ]; then
     CUSTOM_IP=$(cat "$IP_VALUE_FILE")
-    # 用户在 UI 上设置的路由器后台管理地址
     echo "custom router ip is $CUSTOM_IP" >> $LOGFILE
 else
     CUSTOM_IP='192.168.100.1'
@@ -54,12 +53,7 @@ if [ -n "$lan_section" ]; then
     uci set network.lan.device="br-lan"
 fi
 
-# 统一应用 LAN 口静态 IP 配置 (必须在最后，防止被覆盖)
-uci set network.lan.proto='static'
-uci set network.lan.ipaddr="$CUSTOM_IP"
-uci set network.lan.netmask='255.255.255.0'
-
-# PPPoE设置
+# PPPoE 设置 (必须在 LAN 之前，避免影响)
 echo "enable_pppoe value: $enable_pppoe" >>$LOGFILE
 if [ "$enable_pppoe" = "yes" ]; then
     echo "PPPoE enabled, configuring..." >>$LOGFILE
@@ -74,6 +68,16 @@ else
     echo "PPPoE not enabled." >>$LOGFILE
 fi
 
+# 最后统一应用 LAN 口静态 IP 配置 (防止被覆盖)
+uci set network.lan.proto='static'
+uci set network.lan.ipaddr="$CUSTOM_IP"
+uci set network.lan.netmask='255.255.255.0'
+
+# 验证 LAN 配置是否正确应用
+echo "=== Final LAN config before commit ===" >> $LOGFILE
+uci show network.lan >> $LOGFILE
+
+# 提交所有网络配置
 uci commit network
 
 # 若安装了dockerd 则设置docker的防火墙规则
