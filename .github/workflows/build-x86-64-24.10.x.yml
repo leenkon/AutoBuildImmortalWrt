@@ -16,9 +16,13 @@ on:
           - 24.10.4
           - 24.10.5
       custom_router_ip:
-        description: "请设置路由器的管理地址(仅对多网口路由器有效) 格式:192.168.x.1 或 10.x.x.1"
+        description: "请设置路由器的管理地址 (仅对多网口路由器有效) 格式:192.168.x.1 或 10.x.x.1"
         required: true
         default: "10.10.9.1"
+      custom_hostname:
+        description: "请设置路由器的主机名 (可选)"
+        required: false
+        default: "ImmortalWrt"
       profile:
         description: '请输入要编译固件大小 单位(MB)'
         required: true
@@ -70,7 +74,18 @@ jobs:
           mkdir -p "${{ github.workspace }}/custom"
           echo "${{ github.event.inputs.custom_router_ip }}" > "${{ github.workspace }}/custom/custom_router_ip.txt"
           echo "您设置的路由器管理地址是:${{ github.event.inputs.custom_router_ip }}"
-          # 后续步骤会将该文件映射到路由器/etc/config/custom_router_ip.txt 以便用于开机脚本99-custom.sh读取用户设置的ip
+          # 后续步骤会将该文件映射到路由器/etc/config/custom_router_ip.txt 以便用于开机脚本 99-custom.sh读取用户设置的ip
+            
+      - name: Save Custom Hostname into OpenWrt files
+        run: |
+          if [ -n "${{ github.event.inputs.custom_hostname }}" ]; then
+            echo "${{ github.event.inputs.custom_hostname }}" > "${{ github.workspace }}/custom/custom_hostname.txt"
+            echo "您设置的路由器主机名是:${{ github.event.inputs.custom_hostname }}"
+          else
+            echo "ImmortalWrt" > "${{ github.workspace }}/custom/custom_hostname.txt"
+            echo "使用默认主机名:ImmortalWrt"
+          fi
+          # 后续步骤会将该文件映射到路由器/etc/config/custom_hostname.txt 以便用于开机脚本 99-custom.sh读取用户设置的主机名
       
       - name: Validate PPPoE Inputs
         run: |

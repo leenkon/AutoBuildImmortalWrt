@@ -43,7 +43,7 @@ fi
 # 输出调试信息
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始构建固件..."
 
-# ============= imm仓库内的插件==============
+# ============= imm 仓库内的插件==============
 # 定义所需安装的包列表 下列插件你都可以自行删减
 PACKAGES=""
 PACKAGES="$PACKAGES curl"
@@ -56,8 +56,17 @@ PACKAGES="$PACKAGES luci-app-openclash"
 
 # 文件管理器
 # ======== shell/custom-packages.sh =======
-# 合并imm仓库以外的第三方插件
+# 合并 imm 仓库以外的第三方插件
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
+
+# 设置主机名 (从配置文件读取)
+HOSTNAME_FILE="/home/build/immortalwrt/files/etc/config/custom_hostname.txt"
+if [ -f "$HOSTNAME_FILE" ]; then
+    CUSTOM_HOSTNAME=$(cat "$HOSTNAME_FILE")
+    echo "Custom hostname configured: $CUSTOM_HOSTNAME"
+else
+    echo "No custom hostname set, will use default"
+fi
 
 
 # 判断是否需要编译 Docker 插件

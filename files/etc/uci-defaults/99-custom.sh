@@ -14,6 +14,18 @@ uci add dhcp domain
 uci set "dhcp.@domain[-1].name=time.android.com"
 uci set "dhcp.@domain[-1].ip=203.107.6.88"
 
+# 设置路由器主机名（从配置文件读取或默认值）
+HOSTNAME_FILE="/etc/config/custom_hostname.txt"
+if [ -f "$HOSTNAME_FILE" ]; then
+    CUSTOM_HOSTNAME=$(cat "$HOSTNAME_FILE")
+    uci set system.@system[0].hostname="$CUSTOM_HOSTNAME"
+    echo "Custom hostname set to: $CUSTOM_HOSTNAME" >> $LOGFILE
+else
+    # 默认主机名
+    uci set system.@system[0].hostname='ImmortalWrt'
+    echo "Default hostname set to: ImmortalWrt" >> $LOGFILE
+fi
+
 # 检查配置文件pppoe-settings是否存在 该文件由build.sh动态生成
 SETTINGS_FILE="/etc/config/pppoe-settings"
 if [ ! -f "$SETTINGS_FILE" ]; then
@@ -23,20 +35,29 @@ else
     . "$SETTINGS_FILE"
 fi
 
-# LAN口设置静态IP
+# LAN 口设置静态 IP
 uci set network.lan.proto='static'
-#管理后台地址 在Github Action 的UI上自行输入即可 
+#管理后台地址 在 Github Action 的 UI 上自行输入即可 
 uci set network.lan.netmask='255.255.255.0'
 # 设置路由器管理后台地址
 IP_VALUE_FILE="/etc/config/custom_router_ip.txt"
 if [ -f "$IP_VALUE_FILE" ]; then
     CUSTOM_IP=$(cat "$IP_VALUE_FILE")
-    # 用户在UI上设置的路由器后台管理地址
+    # 用户在 UI 上设置的路由器后台管理地址
     uci set network.lan.ipaddr=$CUSTOM_IP
     echo "custom router ip is $CUSTOM_IP" >> $LOGFILE
 else
     uci set network.lan.ipaddr='192.168.100.1'
     echo "default router ip is 192.168.100.1" >> $LOGFILE
+fi
+
+# 设置网桥 (br-lan) 的 IP 配置，确保桥接接口使用正确的静态地址
+# 查找 br-lan 设备 section
+lan_section=$(uci show network | awk -F '[.=]' '/\.@?device\[\d+\]\.name=.br-lan.$/ {print $2; exit}')
+if [ -n "$lan_section" ]; then
+    echo "Found bridge device: $lan_section" >> $LOGFILE
+    # 确保桥接接口的 IP 与 LAN 一致
+    uci set network.lan.device="br-lan"
 fi
 
 # PPPoE设置

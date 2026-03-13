@@ -58,8 +58,17 @@ PACKAGES="$PACKAGES luci-app-openclash"
 PACKAGES="$PACKAGES luci-i18n-homeproxy-zh-cn"
 PACKAGES="$PACKAGES openssh-sftp-server"
 # ======== shell/custom-packages.sh =======
-# 合并imm仓库以外的第三方插件
+# 合并 imm 仓库以外的第三方插件
 PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
+
+# 设置主机名 (从配置文件读取)
+HOSTNAME_FILE="/home/build/immortalwrt/files/etc/config/custom_hostname.txt"
+if [ -f "$HOSTNAME_FILE" ]; then
+    CUSTOM_HOSTNAME=$(cat "$HOSTNAME_FILE")
+    echo "Custom hostname configured: $CUSTOM_HOSTNAME"
+else
+    echo "No custom hostname set, will use default"
+fi
 
 # 判断是否需要编译 Docker 插件
 if [ "$INCLUDE_DOCKER" = "yes" ]; then
