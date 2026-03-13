@@ -52,7 +52,7 @@ PACKAGES="$PACKAGES luci-theme-argon"
 
 #24.10
 PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
-PACKAGES="$PACKAGES luci-app-openclash luci-i18n-openclash-zh-cn"
+PACKAGES="$PACKAGES luci-app-openclash"
 
 # 文件管理器
 # ======== shell/custom-packages.sh =======
