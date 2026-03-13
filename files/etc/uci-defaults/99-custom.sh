@@ -35,50 +35,35 @@ else
     . "$SETTINGS_FILE"
 fi
 
-# LAN 口强制设置静态 IP
+# LAN 口强制设置静态 IP (核心修复：只设置一次)
 IP_VALUE_FILE="/etc/config/custom_router_ip.txt"
-if [ -f "$IP_VALUE_FILE" ]; then
-    CUSTOM_IP=$(cat "$IP_VALUE_FILE")
-else
-    CUSTOM_IP='192.168.100.1'
-fi
+CUSTOM_IP=$([ -f "$IP_VALUE_FILE" ] && cat "$IP_VALUE_FILE" || echo '192.168.100.1')
 
-# 清除 DHCP 配置并强制应用静态 IP
+# 清除所有 DHCP 相关配置
 for opt in proto ipaddr netmask gateway dns ip6assign; do
     uci delete network.lan.$opt 2>/dev/null
 done
+
+# 设置静态 IP
 uci set network.lan.proto='static'
 uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
 
-# 设置网桥
+# 网桥设置
 lan_section=$(uci show network | awk -F '[.=]' '/\.\@?device\[\d+\]\.name=.br-lan.$/ {print $2; exit}')
 [ -n "$lan_section" ] && uci set network.lan.device="br-lan"
 
-# PPPoE 设置
-if [ "$enable_pppoe" = "yes" ]; then
+# PPPoE WAN 设置
+[ "$enable_pppoe" = "yes" ] && {
     uci set network.wan.proto='pppoe'
     uci set network.wan.username="$pppoe_account"
     uci set network.wan.password="$pppoe_password"
     uci set network.wan.peerdns='1'
     uci set network.wan.auto='1'
     uci set network.wan6.proto='none'
-fi
+}
 
-# 强制设置 LAN 口为静态 IP (覆盖所有默认配置)
-# 先删除再设置，确保清除 DHCP 配置
-for opt in proto ipaddr netmask; do
-    uci delete network.lan.$opt 2>/dev/null
-done
-uci commit network
-
-# 重新强制设置静态 IP
-uci set network.lan.proto='static'
-uci set network.lan.ipaddr="$CUSTOM_IP"
-uci set network.lan.netmask='255.255.255.0'
-
-# 验证配置
-uci show network | grep -E "(lan|proto)" >> $LOGFILE
+# 提交网络配置
 uci commit network
 
 # 若安装了dockerd 则设置docker的防火墙规则
