@@ -35,57 +35,50 @@ else
     . "$SETTINGS_FILE"
 fi
 
-# LAN 口设置静态 IP
-#管理后台地址 在 Github Action 的 UI 上自行输入即可 
+# LAN 口强制设置静态 IP
 IP_VALUE_FILE="/etc/config/custom_router_ip.txt"
 if [ -f "$IP_VALUE_FILE" ]; then
     CUSTOM_IP=$(cat "$IP_VALUE_FILE")
-    echo "custom router ip is $CUSTOM_IP" >> $LOGFILE
 else
     CUSTOM_IP='192.168.100.1'
-    echo "default router ip is 192.168.100.1" >> $LOGFILE
 fi
 
-# 彻底重置 LAN 接口配置 (删除所有现有配置)
-echo "=== Resetting LAN interface ===" >> $LOGFILE
-uci delete network.lan.ipaddr 2>/dev/null
-uci delete network.lan.netmask 2>/dev/null
-uci delete network.lan.gateway 2>/dev/null
-uci delete network.lan.dns 2>/dev/null
-uci delete network.lan.ip6assign 2>/dev/null
+# 清除 DHCP 配置并强制应用静态 IP
+for opt in proto ipaddr netmask gateway dns ip6assign; do
+    uci delete network.lan.$opt 2>/dev/null
+done
+uci set network.lan.proto='static'
+uci set network.lan.ipaddr="$CUSTOM_IP"
+uci set network.lan.netmask='255.255.255.0'
 
-# 设置网桥 (br-lan)
+# 设置网桥
 lan_section=$(uci show network | awk -F '[.=]' '/\.\@?device\[\d+\]\.name=.br-lan.$/ {print $2; exit}')
-if [ -n "$lan_section" ]; then
-    echo "Found bridge device: $lan_section" >> $LOGFILE
-    uci set network.lan.device="br-lan"
-fi
+[ -n "$lan_section" ] && uci set network.lan.device="br-lan"
 
-# PPPoE 设置 (必须在 LAN 之前，避免影响)
-echo "enable_pppoe value: $enable_pppoe" >>$LOGFILE
+# PPPoE 设置
 if [ "$enable_pppoe" = "yes" ]; then
-    echo "PPPoE enabled, configuring..." >>$LOGFILE
     uci set network.wan.proto='pppoe'
     uci set network.wan.username="$pppoe_account"
     uci set network.wan.password="$pppoe_password"
     uci set network.wan.peerdns='1'
     uci set network.wan.auto='1'
     uci set network.wan6.proto='none'
-    echo "PPPoE config done." >>$LOGFILE
-else
-    echo "PPPoE not enabled." >>$LOGFILE
 fi
 
 # 强制设置 LAN 口为静态 IP (覆盖所有默认配置)
+# 先删除再设置，确保清除 DHCP 配置
+for opt in proto ipaddr netmask; do
+    uci delete network.lan.$opt 2>/dev/null
+done
+uci commit network
+
+# 重新强制设置静态 IP
 uci set network.lan.proto='static'
 uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
 
-# 验证 LAN 配置是否正确应用
-echo "=== Final LAN config before commit ===" >> $LOGFILE
-uci show network.lan >> $LOGFILE
-
-# 提交所有网络配置
+# 验证配置
+uci show network | grep -E "(lan|proto)" >> $LOGFILE
 uci commit network
 
 # 若安装了dockerd 则设置docker的防火墙规则
