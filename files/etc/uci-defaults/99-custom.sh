@@ -46,6 +46,14 @@ else
     echo "default router ip is 192.168.100.1" >> $LOGFILE
 fi
 
+# 彻底重置 LAN 接口配置 (删除所有现有配置)
+echo "=== Resetting LAN interface ===" >> $LOGFILE
+uci delete network.lan.ipaddr 2>/dev/null
+uci delete network.lan.netmask 2>/dev/null
+uci delete network.lan.gateway 2>/dev/null
+uci delete network.lan.dns 2>/dev/null
+uci delete network.lan.ip6assign 2>/dev/null
+
 # 设置网桥 (br-lan)
 lan_section=$(uci show network | awk -F '[.=]' '/\.\@?device\[\d+\]\.name=.br-lan.$/ {print $2; exit}')
 if [ -n "$lan_section" ]; then
@@ -68,7 +76,7 @@ else
     echo "PPPoE not enabled." >>$LOGFILE
 fi
 
-# 最后统一应用 LAN 口静态 IP 配置 (防止被覆盖)
+# 强制设置 LAN 口为静态 IP (覆盖所有默认配置)
 uci set network.lan.proto='static'
 uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
