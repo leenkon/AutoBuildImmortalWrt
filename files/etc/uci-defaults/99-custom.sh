@@ -22,8 +22,8 @@ if [ -f "$HOSTNAME_FILE" ]; then
     echo "Custom hostname set to: $CUSTOM_HOSTNAME" >> $LOGFILE
 else
     # 默认主机名
-    uci set system.@system[0].hostname='ImmortalWrt'
-    echo "Default hostname set to: ImmortalWrt" >> $LOGFILE
+    uci set system.@system[0].hostname='Router'
+    echo "Default hostname set to: Router" >> $LOGFILE
 fi
 
 # 检查配置文件pppoe-settings是否存在 该文件由build.sh动态生成

@@ -18,11 +18,11 @@ on:
       custom_router_ip:
         description: "请设置路由器的管理地址 (仅对多网口路由器有效) 格式:192.168.x.1 或 10.x.x.1"
         required: true
-        default: "10.10.9.1"
+        default: "10.10.10.1"
       custom_hostname:
         description: "请设置路由器的主机名 (可选)"
         required: false
-        default: "ImmortalWrt"
+        default: "Router"
       profile:
         description: '请输入要编译固件大小 单位(MB)'
         required: true
