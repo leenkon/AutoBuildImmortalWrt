@@ -14,10 +14,8 @@ mkdir -p /home/build/immortalwrt/files/etc
 # 创建自定义设置脚本，直接设置 UCI 配置
 cat << 'EOF' > /home/build/immortalwrt/files/etc/custom-settings.sh
 #!/bin/sh
-# Custom router IP
 [ -n "${CUSTOM_ROUTER_IP}" ] && uci set network.lan.ipaddr="${CUSTOM_ROUTER_IP}"
 
-# Custom hostname
 [ -n "${CUSTOM_HOSTNAME_VAL}" ] && uci set system.@system[0].hostname="${CUSTOM_HOSTNAME_VAL}"
 
 # PPPoE settings
