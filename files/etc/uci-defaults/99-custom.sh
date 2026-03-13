@@ -19,11 +19,9 @@ HOSTNAME_FILE="/etc/config/custom_hostname.txt"
 if [ -f "$HOSTNAME_FILE" ]; then
     CUSTOM_HOSTNAME=$(cat "$HOSTNAME_FILE")
     uci set system.@system[0].hostname="$CUSTOM_HOSTNAME"
-    echo "Custom hostname set to: $CUSTOM_HOSTNAME" >> $LOGFILE
 else
     # 默认主机名
     uci set system.@system[0].hostname='Router'
-    echo "Default hostname set to: Router" >> $LOGFILE
 fi
 
 # 检查配置文件pppoe-settings是否存在 该文件由build.sh动态生成
@@ -48,6 +46,7 @@ done
 uci set network.lan.proto='static'
 uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
+uci set network.lan.ip6assign='60'
 
 # 网桥设置
 lan_section=$(uci show network | awk -F '[.=]' '/\.\@?device\[\d+\]\.name=.br-lan.$/ {print $2; exit}')
