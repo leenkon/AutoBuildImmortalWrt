@@ -14,28 +14,14 @@ uci add dhcp domain
 uci set "dhcp.@domain[-1].name=time.android.com"
 uci set "dhcp.@domain[-1].ip=203.107.6.88"
 
-# 设置路由器主机名（从配置文件读取或默认值）
-HOSTNAME_FILE="/etc/config/custom_hostname.txt"
-if [ -f "$HOSTNAME_FILE" ]; then
-    CUSTOM_HOSTNAME=$(cat "$HOSTNAME_FILE")
-    uci set system.@system[0].hostname="$CUSTOM_HOSTNAME"
-else
-    # 默认主机名
-    uci set system.@system[0].hostname='Router'
-fi
+# 设置路由器主机名 (custom-settings.sh 已设置，这里不需要重复)
 
-# 检查配置文件pppoe-settings是否存在 该文件由build.sh动态生成
-SETTINGS_FILE="/etc/config/pppoe-settings"
-if [ ! -f "$SETTINGS_FILE" ]; then
-    echo "PPPoE settings file not found. Skipping." >>$LOGFILE
-else
-    # 读取pppoe信息($enable_pppoe、$pppoe_account、$pppoe_password)
-    . "$SETTINGS_FILE"
-fi
+# 执行自定义设置脚本
+CUSTOM_SCRIPT="/etc/custom-settings.sh"
+[ -f "$CUSTOM_SCRIPT" ] && sh "$CUSTOM_SCRIPT" >> $LOGFILE 2>&1
 
-# LAN 口强制设置静态 IP (核心修复：只设置一次)
-IP_VALUE_FILE="/etc/config/custom_router_ip.txt"
-CUSTOM_IP=$([ -f "$IP_VALUE_FILE" ] && cat "$IP_VALUE_FILE" || echo '192.168.100.1')
+# LAN 口强制设置静态 IP (如果 custom-settings.sh 未设置则使用默认值)
+uci show network.lan.ipaddr >/dev/null 2>&1 || uci set network.lan.ipaddr='192.168.100.1'
 
 # 清除所有 DHCP 相关配置
 for opt in proto ipaddr netmask gateway dns ip6assign; do
@@ -44,7 +30,6 @@ done
 
 # 设置静态 IP
 uci set network.lan.proto='static'
-uci set network.lan.ipaddr="$CUSTOM_IP"
 uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='60'
 

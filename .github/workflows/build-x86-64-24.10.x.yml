@@ -69,24 +69,6 @@ jobs:
       - name: Set executable permissions
         run: chmod +x ${{ github.workspace }}/x86-64/build24.sh
 
-      - name: Save Custom Router IP into OpenWrt files
-        run: |
-          mkdir -p "${{ github.workspace }}/custom"
-          echo "${{ github.event.inputs.custom_router_ip }}" > "${{ github.workspace }}/custom/custom_router_ip.txt"
-          echo "您设置的路由器管理地址是:${{ github.event.inputs.custom_router_ip }}"
-          # 后续步骤会将该文件映射到路由器/etc/config/custom_router_ip.txt 以便用于开机脚本 99-custom.sh读取用户设置的ip
-            
-      - name: Save Custom Hostname into OpenWrt files
-        run: |
-          if [ -n "${{ github.event.inputs.custom_hostname }}" ]; then
-            echo "${{ github.event.inputs.custom_hostname }}" > "${{ github.workspace }}/custom/custom_hostname.txt"
-            echo "您设置的路由器主机名是:${{ github.event.inputs.custom_hostname }}"
-          else
-            echo "ImmortalWrt" > "${{ github.workspace }}/custom/custom_hostname.txt"
-            echo "使用默认主机名:ImmortalWrt"
-          fi
-          # 后续步骤会将该文件映射到路由器/etc/config/custom_hostname.txt 以便用于开机脚本 99-custom.sh读取用户设置的主机名
-      
       - name: Validate PPPoE Inputs
         run: |
           if [[ "${{ inputs.enable_pppoe }}" == "yes" ]]; then
@@ -110,20 +92,26 @@ jobs:
           profile="${{ github.event.inputs.profile }}"
           include_docker="${{ github.event.inputs.include_docker }}"
           luci_version="${{ github.event.inputs.luci_version }}"
+          custom_router_ip="${{ github.event.inputs.custom_router_ip }}"
+          custom_hostname="${{ github.event.inputs.custom_hostname }}"
+          enable_pppoe="${{ github.event.inputs.enable_pppoe }}"
+          pppoe_account="${{ github.event.inputs.pppoe_account }}"
+          pppoe_password="${{ github.event.inputs.pppoe_password }}"
           echo "Building for profile: $profile"
           docker run --rm -i \
             --user root \
             -v "${{ github.workspace }}/bin:/home/build/immortalwrt/bin" \
             -v "${{ github.workspace }}/files:/home/build/immortalwrt/files" \
-            -v "${{ github.workspace }}/custom:/home/build/immortalwrt/files/etc/config" \
             -v "${{ github.workspace }}/x86-64/imm.config:/home/build/immortalwrt/.config" \
             -v "${{ github.workspace }}/shell:/home/build/immortalwrt/shell" \
             -v "${{ github.workspace }}/x86-64/build24.sh:/home/build/immortalwrt/build.sh" \
             -e PROFILE=$profile \
             -e INCLUDE_DOCKER=$include_docker \
-            -e ENABLE_PPPOE=${{ github.event.inputs.enable_pppoe }} \
-            -e PPPOE_ACCOUNT=${{ github.event.inputs.pppoe_account }} \
-            -e PPPOE_PASSWORD=${{ github.event.inputs.pppoe_password }} \
+            -e CUSTOM_ROUTER_IP=$custom_router_ip \
+            -e CUSTOM_HOSTNAME_VAL=$custom_hostname \
+            -e ENABLE_PPPOE=$enable_pppoe \
+            -e PPPOE_ACCOUNT=$pppoe_account \
+            -e PPPOE_PASSWORD=$pppoe_password \
           immortalwrt/imagebuilder:x86-64-openwrt-${luci_version} /bin/bash /home/build/immortalwrt/build.sh
           
 
