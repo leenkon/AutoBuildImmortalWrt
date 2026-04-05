@@ -43,7 +43,7 @@ on:
       pppoe_account:
         description: "宽带账号 (若启用PPPoE)"
         required: false
-        default: 'CD02861565686'
+        default: 'CD2861565686'
       pppoe_password:
         description: "宽带密码 (若启用PPPoE)"
         required: false
