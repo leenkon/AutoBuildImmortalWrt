@@ -8,20 +8,31 @@ echo "Starting 99-custom.sh at $(date)" >> $LOGFILE
 echo "编译固件大小为: $PROFILE MB"
 echo "Include Docker: $INCLUDE_DOCKER"
 
-echo "Create pppoe-settings"
-mkdir -p  /home/build/immortalwrt/files/etc/config
+# 创建自定义设置脚本，直接设置 UCI 配置
+cat << 'EOF' > /home/build/immortalwrt/files/etc/custom-settings.sh
+#!/bin/sh
+[ -n "${CUSTOM_ROUTER_IP}" ] && uci set network.lan.ipaddr="${CUSTOM_ROUTER_IP}"
 
-# 创建pppoe配置文件 yml传入环境变量ENABLE_PPPOE等 写入配置文件 供99-custom.sh读取
-cat << EOF > /home/build/immortalwrt/files/etc/config/pppoe-settings
-enable_pppoe=${ENABLE_PPPOE}
-pppoe_account=${PPPOE_ACCOUNT}
-pppoe_password=${PPPOE_PASSWORD}
+[ -n "${CUSTOM_HOSTNAME_VAL}" ] && uci set system.@system[0].hostname="${CUSTOM_HOSTNAME_VAL}"
+
+# PPPoE settings
+[ "${ENABLE_PPPOE}" = "yes" ] && [ -n "${PPPOE_ACCOUNT}" ] && [ -n "${PPPOE_PASSWORD}" ] && {
+    uci set network.wan=interface
+    uci set network.wan.proto='pppoe'
+    uci set network.wan.username="${PPPOE_ACCOUNT}"
+    uci set network.wan.password="${PPPOE_PASSWORD}"
+    uci set network.wan.peerdns='1'
+    uci set network.wan.auto='1'
+    uci set network.wan6.proto='none'
+}
+
+uci commit
 EOF
 
-echo "cat pppoe-settings"
-cat /home/build/immortalwrt/files/etc/config/pppoe-settings
+chmod +x /home/build/immortalwrt/files/etc/custom-settings.sh
 
-
+# 替换环境变量
+sed -i "s|\${CUSTOM_ROUTER_IP}|${CUSTOM_ROUTER_IP}|g; s|\${CUSTOM_HOSTNAME_VAL}|${CUSTOM_HOSTNAME_VAL}|g; s|\${ENABLE_PPPOE}|${ENABLE_PPPOE}|g; s|\${PPPOE_ACCOUNT}|${PPPOE_ACCOUNT}|g; s|\${PPPOE_PASSWORD}|${PPPOE_PASSWORD}|g" /home/build/immortalwrt/files/etc/custom-settings.sh
 
 # 输出调试信息
 echo "$(date '+%Y-%m-%d %H:%M:%S') - 开始构建固件..."
