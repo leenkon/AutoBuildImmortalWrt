@@ -40,11 +40,7 @@ PACKAGES="$PACKAGES luci-i18n-package-manager-zh-cn"
 PACKAGES="$PACKAGES luci-i18n-ttyd-zh-cn"
 PACKAGES="$PACKAGES xray-core hysteria luci-i18n-passwall-zh-cn"
 PACKAGES="$PACKAGES luci-app-openclash"
-PACKAGES="$PACKAGES luci-i18n-homeproxy-zh-cn"
-PACKAGES="$PACKAGES openssh-sftp-server"
 
-# 文件管理器
-PACKAGES="$PACKAGES luci-i18n-filemanager-zh-cn"
 # ======== shell/custom-packages.sh =======
 # 合并imm仓库以外的第三方插件 暂时注释
 #PACKAGES="$PACKAGES $CUSTOM_PACKAGES"
