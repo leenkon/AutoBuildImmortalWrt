@@ -86,7 +86,7 @@ if echo "$PACKAGES" | grep -q "luci-app-openclash"; then
     echo "✅ 已选择 luci-app-openclash，添加 openclash core"
     mkdir -p /home/build/immortalwrt/files/etc/openclash/core
     # Download clash_meta
-    META_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64.tar.gz"
+    META_URL="https://raw.githubusercontent.com/vernesong/OpenClash/core/master/meta/clash-linux-amd64-V1.tar.gz"
     wget -qO- $META_URL | tar xOvz > /home/build/immortalwrt/files/etc/openclash/core/clash_meta
     chmod +x /home/build/immortalwrt/files/etc/openclash/core/clash_meta
     # Download GeoIP and GeoSite
